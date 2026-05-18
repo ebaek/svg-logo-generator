@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SVG Logo Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e5e5ea;
+      padding: 0 32px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 17px; font-weight: 600; }
+    header span { font-size: 13px; color: #8e8e93; }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 0;
+      min-height: calc(100vh - 56px);
+    }
+
+    /* ── Sidebar (form) ── */
+    .sidebar {
+      background: #fff;
+      border-right: 1px solid #e5e5ea;
+      padding: 28px 24px;
+      overflow-y: auto;
+    }
+
+    .sidebar h2 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #1d1d1f;
+    }
+
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: #6e6e73;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .field label .required { color: #ff3b30; margin-left: 2px; }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #d1d1d6;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #1d1d1f;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus { border-color: #007aff; }
+    .field textarea { resize: vertical; min-height: 64px; }
+
+    .field .hint {
+      font-size: 11px;
+      color: #8e8e93;
+      margin-top: 4px;
+    }
+
+    /* Logo type selector */
+    .logo-type-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .logo-type-option {
+      border: 1.5px solid #d1d1d6;
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+    }
+    .logo-type-option:hover { border-color: #007aff; background: #f0f7ff; }
+    .logo-type-option.selected { border-color: #007aff; background: #f0f7ff; }
+    .logo-type-option input[type="radio"] { display: none; }
+    .logo-type-option .type-name { font-size: 13px; font-weight: 600; }
+    .logo-type-option .type-desc { font-size: 11px; color: #6e6e73; margin-top: 2px; line-height: 1.4; }
+
+    /* Divider */
+    .divider {
+      border: none;
+      border-top: 1px solid #e5e5ea;
+      margin: 20px 0;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: #007aff; color: #fff; width: 100%; }
+    .btn-primary:hover:not(:disabled) { background: #0071e3; }
+    .btn-secondary {
+      background: transparent;
+      color: #007aff;
+      border: 1.5px solid #007aff;
+      font-size: 13px;
+      padding: 7px 14px;
+    }
+    .btn-secondary:hover:not(:disabled) { background: #f0f7ff; }
+    .btn-danger {
+      background: transparent;
+      color: #ff3b30;
+      border: 1.5px solid #ff3b30;
+      font-size: 13px;
+      padding: 7px 14px;
+    }
+    .btn-danger:hover:not(:disabled) { background: #fff0ef; }
+
+    /* ── Main canvas ── */
+    .canvas {
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: #8e8e93;
+    }
+    .empty-state .icon { font-size: 48px; }
+    .empty-state p { font-size: 15px; }
+
+    /* SVG preview */
+    .preview-card {
+      background: #fff;
+      border: 1px solid #e5e5ea;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid #f2f2f7;
+    }
+    .preview-header .company-name { font-size: 15px; font-weight: 600; }
+    .preview-header .logo-type-badge {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: #f2f2f7;
+      color: #6e6e73;
+      padding: 3px 8px;
+      border-radius: 100px;
+    }
+
+    .preview-area {
+      background: #fafafa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px;
+      min-height: 300px;
+    }
+    .preview-area svg { max-width: 240px; max-height: 240px; width: 100%; height: auto; }
+
+    .preview-actions {
+      display: flex;
+      gap: 8px;
+      padding: 14px 18px;
+      border-top: 1px solid #f2f2f7;
+    }
+
+    /* Evaluation panel */
+    .eval-card {
+      background: #fff;
+      border: 1px solid #e5e5ea;
+      border-radius: 16px;
+      padding: 18px;
+    }
+    .eval-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .score-badge {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .score-high { background: #d1fae5; color: #065f46; }
+    .score-mid  { background: #fef9c3; color: #854d0e; }
+    .score-low  { background: #fee2e2; color: #991b1b; }
+
+    .eval-title { font-size: 14px; font-weight: 600; }
+    .eval-subtitle { font-size: 12px; color: #8e8e93; }
+
+    .eval-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .eval-section h4 { font-size: 12px; font-weight: 600; color: #6e6e73; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
+    .eval-section ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .eval-section li { font-size: 13px; line-height: 1.4; display: flex; gap: 6px; align-items: flex-start; }
+    .eval-section li::before { flex-shrink: 0; margin-top: 1px; }
+    .strengths li::before { content: "✓"; color: #34c759; font-weight: 700; }
+    .improvements li::before { content: "→"; color: #ff9500; font-weight: 700; }
+
+    /* Refinement bar */
+    .refine-card {
+      background: #fff;
+      border: 1px solid #e5e5ea;
+      border-radius: 16px;
+      padding: 16px 18px;
+    }
+    .refine-card h3 { font-size: 13px; font-weight: 600; color: #6e6e73; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .refine-row { display: flex; gap: 8px; }
+    .refine-row input {
+      flex: 1;
+      padding: 9px 12px;
+      border: 1px solid #d1d1d6;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .refine-row input:focus { border-color: #007aff; }
+    .refine-row input:disabled { background: #f5f5f7; }
+
+    .turn-counter { font-size: 12px; color: #8e8e93; margin-top: 8px; }
+
+    /* ── Turn history ── */
+    .history-section { display: flex; flex-direction: column; gap: 16px; }
+
+    .turn-card {
+      background: #fff;
+      border: 1px solid #e5e5ea;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .turn-card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid #f2f2f7;
+      background: #fafafa;
+    }
+    .turn-badge {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: #007aff;
+      color: #fff;
+      padding: 3px 9px;
+      border-radius: 100px;
+      white-space: nowrap;
+    }
+    .turn-instruction {
+      font-size: 13px;
+      color: #3c3c43;
+      font-style: italic;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .turn-svg-preview {
+      background: #fafafa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      min-height: 180px;
+      border-bottom: 1px solid #f2f2f7;
+    }
+    .turn-svg-preview svg { max-width: 180px; max-height: 180px; width: 100%; height: auto; }
+    .turn-actions {
+      display: flex;
+      gap: 8px;
+      padding: 10px 14px;
+      border-bottom: 1px solid #f2f2f7;
+    }
+    .turn-eval { padding: 14px 16px; }
+    .turn-eval .eval-header { margin-bottom: 10px; }
+
+    .refine-card-persistent {
+      background: #fff;
+      border: 1px solid #e5e5ea;
+      border-radius: 16px;
+      padding: 16px 18px;
+      position: sticky;
+      bottom: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+    .refine-card-persistent h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #6e6e73;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    /* Loading overlay */
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(255,255,255,0.85);
+      z-index: 100;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+    .loading-overlay.visible { display: flex; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #e5e5ea;
+      border-top-color: #007aff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-step { font-size: 15px; color: #1d1d1f; font-weight: 500; }
+    .loading-substep { font-size: 13px; color: #8e8e93; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1d1d1f;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 100px;
+      font-size: 14px;
+      z-index: 200;
+      transition: transform 0.25s ease;
+      white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>SVG Logo Generator</h1>
+</header>
+
+<div class="layout">
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <h2 id="sidebar-title">Brand Discovery</h2>
+
+    <div class="field">
+      <label>Company Name <span class="required">*</span></label>
+      <input id="f-company" type="text" placeholder="e.g. Acme Corp" />
+    </div>
+
+    <div class="field">
+      <label>Industry <span class="required">*</span></label>
+      <input id="f-industry" type="text" placeholder="e.g. Technology, Healthcare, Food" />
+    </div>
+
+    <div class="field">
+      <label>API Provider</label>
+      <select id="f-provider">
+        <option value="claude">Claude</option>
+        <option value="openai">ChatGPT</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Logo Type <span class="required">*</span></label>
+      <div class="logo-type-grid" id="logo-type-grid">
+        <label class="logo-type-option selected">
+          <input type="radio" name="logoType" value="wordmark" checked />
+          <div class="type-name">Wordmark</div>
+          <div class="type-desc">Text-only, unique typography (e.g. Coca-Cola)</div>
+        </label>
+        <label class="logo-type-option">
+          <input type="radio" name="logoType" value="letterform" />
+          <div class="type-name">Letterform</div>
+          <div class="type-desc">Single distinctive letter (e.g. Facebook F)</div>
+        </label>
+        <label class="logo-type-option">
+          <input type="radio" name="logoType" value="monogram" />
+          <div class="type-name">Monogram</div>
+          <div class="type-desc">Brand initials combined (e.g. IBM, H&M)</div>
+        </label>
+        <label class="logo-type-option">
+          <input type="radio" name="logoType" value="abstract" />
+          <div class="type-name">Abstract</div>
+          <div class="type-desc">Pure shapes, no literal imagery (e.g. Pepsi)</div>
+        </label>
+        <label class="logo-type-option">
+          <input type="radio" name="logoType" value="combination" />
+          <div class="type-name">Combination</div>
+          <div class="type-desc">Symbol + text together (e.g. Airbnb)</div>
+        </label>
+        <label class="logo-type-option">
+          <input type="radio" name="logoType" value="emblem" />
+          <div class="type-name">Emblem</div>
+          <div class="type-desc">Inside a badge/shape (e.g. Starbucks)</div>
+        </label>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="field">
+      <label>Target Audience <span class="required">*</span></label>
+      <input id="f-audience" type="text" placeholder="e.g. Enterprise CTOs aged 35–55" />
+      <div class="hint">Who is your primary customer?</div>
+    </div>
+
+    <div class="field">
+      <label>Core Mission <span class="required">*</span></label>
+      <textarea id="f-mission" placeholder="e.g. We make data pipelines simple for non-technical teams"></textarea>
+      <div class="hint">What is your brand's core mission or message?</div>
+    </div>
+
+    <div class="field">
+      <label>Brand Personality <span class="required">*</span></label>
+      <input id="f-adjectives" type="text" placeholder="e.g. bold, trustworthy, modern" />
+      <div class="hint">3 adjectives that describe your company</div>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="field">
+      <label>Competitors to Differentiate From</label>
+      <input id="f-competitors" type="text" placeholder="e.g. Salesforce, HubSpot (optional)" />
+    </div>
+
+    <div class="field">
+      <label>Style Preference</label>
+      <select id="f-style">
+        <option value="minimalist">Minimalist</option>
+        <option value="bold">Bold</option>
+        <option value="playful">Playful</option>
+        <option value="corporate">Corporate</option>
+        <option value="geometric">Geometric</option>
+        <option value="organic">Organic</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Color Preference</label>
+      <input id="f-colors" type="text" placeholder="e.g. blue and white, earth tones (optional)" />
+    </div>
+
+    <button class="btn btn-primary" id="btn-generate">Generate Logo</button>
+  </aside>
+
+  <!-- ── Canvas ── -->
+  <main class="canvas" id="canvas">
+    <div class="empty-state" id="empty-state">
+      <div class="icon">◻</div>
+      <p>Fill in your brand details and click Generate Logo</p>
+    </div>
+  </main>
+</div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-step" id="loading-step">Generating logo...</div>
+  <div class="loading-substep" id="loading-substep"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  const state = {
+    sessionId: null,
+    turns: [],
+    isLoading: false,
+    companyName: '',
+    logoType: 'wordmark',
+    provider: 'claude',
+  };
+
+  // ── Provider selector ──
+  document.getElementById('f-provider').addEventListener('change', e => {
+    state.provider = e.target.value;
+  });
+
+  // ── Logo type selector ──
+  document.querySelectorAll('.logo-type-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('.logo-type-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      state.logoType = opt.querySelector('input[type="radio"]').value;
+    });
+  });
+
+  // ── Loading helpers ──
+  const loadingSteps = [
+    ['Gathering design inspiration...', 'Consulting industry patterns for your logo type'],
+    ['Selecting color palette...', 'Matching colors to your industry and style'],
+    ['Generating SVG logo...', 'Your selected model is designing the logo'],
+    ['Validating structure...', 'Checking SVG integrity and type rules'],
+    ['Evaluating quality...', 'Scoring against Figma design principles'],
+  ];
+  let stepIndex = 0;
+  let stepInterval = null;
+
+  function startLoading(label) {
+    state.isLoading = true;
+    stepIndex = 0;
+    document.getElementById('loading-step').textContent = label ?? loadingSteps[0][0];
+    document.getElementById('loading-substep').textContent = loadingSteps[0][1];
+    document.getElementById('loading-overlay').classList.add('visible');
+    stepInterval = setInterval(() => {
+      stepIndex = (stepIndex + 1) % loadingSteps.length;
+      document.getElementById('loading-step').textContent = loadingSteps[stepIndex][0];
+      document.getElementById('loading-substep').textContent = loadingSteps[stepIndex][1];
+    }, 2200);
+    document.getElementById('btn-generate').disabled = true;
+    const refineBtn = document.getElementById('btn-refine');
+    if (refineBtn) refineBtn.disabled = true;
+  }
+
+  function stopLoading() {
+    state.isLoading = false;
+    clearInterval(stepInterval);
+    document.getElementById('loading-overlay').classList.remove('visible');
+    document.getElementById('btn-generate').disabled = false;
+    const refineBtn = document.getElementById('btn-refine');
+    if (refineBtn) refineBtn.disabled = false;
+  }
+
+  // ── Toast ──
+  function showToast(msg, duration = 3000) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), duration);
+  }
+
+  // ── Score badge class ──
+  function scoreBadgeClass(score) {
+    if (score >= 7) return 'score-high';
+    if (score >= 4) return 'score-mid';
+    return 'score-low';
+  }
+
+  // ── Add a turn to state and re-render ──
+  function addTurn(response, instruction) {
+    state.sessionId = response.sessionId;
+    state.turns.push({
+      number: response.turnCount,
+      svg: response.svg,
+      evaluation: response.evaluation ?? null,
+      instruction: instruction ?? null,
+    });
+    renderHistory();
+  }
+
+  // ── Build HTML for one turn card ──
+  function buildTurnCardHtml(turn, index) {
+    const ev = turn.evaluation;
+    const headerHtml = `
+      <div class="turn-card-header">
+        <span class="turn-badge">Turn ${turn.number}</span>
+        ${turn.instruction
+          ? `<span class="turn-instruction">"${escHtml(turn.instruction)}"</span>`
+          : `<span class="turn-instruction">Initial generation — ${escHtml(state.companyName)}</span>`}
+      </div>`;
+
+    const svgHtml = `<div class="turn-svg-preview">${turn.svg}</div>`;
+
+    const actionsHtml = `
+      <div class="turn-actions">
+        <button class="btn btn-secondary" onclick="downloadTurnSvg(${index})">Download SVG</button>
+        <button class="btn btn-secondary" onclick="copyTurnSvg(${index})">Copy SVG</button>
+      </div>`;
+
+    const evalHtml = ev ? `
+      <div class="turn-eval">
+        <div class="eval-header">
+          <div class="score-badge ${scoreBadgeClass(ev.score)}">${ev.score}/10</div>
+          <div>
+            <div class="eval-title">Design Evaluation</div>
+            <div class="eval-subtitle">Based on Figma logo design principles</div>
+          </div>
+        </div>
+        <div class="eval-sections">
+          <div class="eval-section">
+            <h4>Strengths</h4>
+            <ul class="strengths">
+              ${(ev.strengths ?? []).map(s => `<li>${escHtml(s)}</li>`).join('') || '<li>–</li>'}
+            </ul>
+          </div>
+          <div class="eval-section">
+            <h4>To Improve</h4>
+            <ul class="improvements">
+              ${(ev.improvements ?? []).map(i => `<li>${escHtml(i)}</li>`).join('') || '<li>–</li>'}
+            </ul>
+          </div>
+        </div>
+      </div>` : '';
+
+    return `${headerHtml}${svgHtml}${actionsHtml}${evalHtml}`;
+  }
+
+  // ── Render full turn history + persistent refine card ──
+  function renderHistory() {
+    const canvas = document.getElementById('canvas');
+    const n = state.turns.length;
+
+    const cardsHtml = [...state.turns]
+      .reverse()
+      .map((turn, revIdx) => {
+        const originalIndex = n - 1 - revIdx;
+        return `<div class="turn-card">${buildTurnCardHtml(turn, originalIndex)}</div>`;
+      })
+      .join('');
+
+    canvas.innerHTML = `
+      <div class="history-section">${cardsHtml}</div>
+      <div class="refine-card-persistent">
+        <h3>Refine Logo — ${n} turn${n !== 1 ? 's' : ''}</h3>
+        <div class="refine-row">
+          <input id="refine-input" type="text"
+            placeholder="e.g. make the colors warmer, add more geometry, bolder font..." />
+          <button class="btn btn-primary" id="btn-refine" onclick="refineLogo()" style="width:auto">Refine</button>
+        </div>
+        <div style="display:flex;align-items:center;margin-top:8px;">
+          <div class="turn-counter">${n} turn${n !== 1 ? 's' : ''} in this session</div>
+          <button class="btn btn-danger" onclick="startOver()" style="margin-left:auto">← Start Over</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('refine-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') refineLogo();
+    });
+  }
+
+  // ── Generate ──
+  async function generate() {
+    const company   = document.getElementById('f-company').value.trim();
+    const industry  = document.getElementById('f-industry').value.trim();
+    const logoType  = state.logoType;
+    const audience  = document.getElementById('f-audience').value.trim();
+    const mission   = document.getElementById('f-mission').value.trim();
+    const adjectives = document.getElementById('f-adjectives').value.trim();
+
+    if (!company || !industry || !audience || !mission || !adjectives) {
+      showToast('Please fill in all required fields.');
+      return;
+    }
+
+    // Clear old session
+    if (state.sessionId) {
+      fetch(`/api/session/${state.sessionId}`, { method: 'DELETE' }).catch(() => {});
+      state.sessionId = null;
+    }
+    state.turns = [];
+
+    state.companyName = company;
+
+    startLoading('Starting agent harness...');
+
+    try {
+      const body = {
+        companyName: company,
+        industry,
+        logoType,
+        targetAudience: audience,
+        coreMission: mission,
+        brandAdjectives: adjectives,
+        competitors: document.getElementById('f-competitors').value.trim() || undefined,
+        style: document.getElementById('f-style').value,
+        colors: document.getElementById('f-colors').value.trim() || undefined,
+        provider: state.provider,
+      };
+
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      stopLoading();
+
+      if (!res.ok) {
+        showToast(data.error ?? 'Generation failed. Please try again.');
+        return;
+      }
+
+      addTurn(data, null);
+    } catch (err) {
+      stopLoading();
+      showToast('Network error. Is the server running?');
+    }
+  }
+
+  // ── Refine ──
+  async function refineLogo() {
+    const input = document.getElementById('refine-input');
+    const instruction = input.value.trim();
+    if (!instruction) return;
+    if (!state.sessionId) {
+      showToast('No active session. Please generate a logo first.');
+      return;
+    }
+
+    input.value = '';
+    startLoading('Refining logo...');
+
+    try {
+      const res = await fetch('/api/refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: state.sessionId, instruction }),
+      });
+
+      const data = await res.json();
+      stopLoading();
+
+      if (res.status === 404) {
+        showToast('Session expired. Please generate a new logo.');
+        state.sessionId = null;
+        document.getElementById('canvas').innerHTML = `
+          <div class="empty-state" id="empty-state">
+            <div class="icon">◻</div>
+            <p>Session expired. Fill in the form and generate a new logo.</p>
+          </div>`;
+        return;
+      }
+
+      if (!res.ok) {
+        showToast(data.error ?? 'Refinement failed. Please try again.');
+        return;
+      }
+
+      addTurn(data, instruction);
+    } catch (err) {
+      stopLoading();
+      showToast('Network error. Is the server running?');
+    }
+  }
+
+  // ── Start over ──
+  function startOver() {
+    if (state.sessionId) {
+      fetch(`/api/session/${state.sessionId}`, { method: 'DELETE' }).catch(() => {});
+      state.sessionId = null;
+    }
+    state.turns = [];
+    document.getElementById('canvas').innerHTML = `
+      <div class="empty-state" id="empty-state">
+        <div class="icon">◻</div>
+        <p>Fill in your brand details and click Generate Logo</p>
+      </div>`;
+  }
+
+  // ── Per-turn download ──
+  function downloadTurnSvg(index) {
+    const turn = state.turns[index];
+    if (!turn) return;
+    const blob = new Blob([turn.svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${state.companyName.replace(/\s+/g, '-').toLowerCase() || 'logo'}-turn${turn.number}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ── Per-turn copy ──
+  async function copyTurnSvg(index) {
+    const turn = state.turns[index];
+    if (!turn) return;
+    try {
+      await navigator.clipboard.writeText(turn.svg);
+      showToast('SVG copied to clipboard.');
+    } catch {
+      showToast('Could not access clipboard.');
+    }
+  }
+
+  // ── HTML escape ──
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ── Wire up generate button ──
+  document.getElementById('btn-generate').addEventListener('click', generate);
+</script>
+</body>
+</html>
