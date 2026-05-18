@@ -2,6 +2,8 @@
 
 An agentic logo design tool that uses Claude or GPT-4o to generate, validate, and evaluate SVG logos from a brand brief.
 
+![example](assets/example.png)
+
 ## How it works
 
 Each generation runs a multi-step agent loop:
